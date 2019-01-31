@@ -1,5 +1,7 @@
 // this library is public domain. enjoy!
 // www.ladyada.net/learn/sensors/thermocouple
+#include <arduino.h>
+#include <limits.h>
 
 #ifdef __AVR
   #include <avr/pgmspace.h>
@@ -22,12 +24,19 @@ MAX6675::MAX6675(int8_t SCLK, int8_t CS, int8_t MISO) {
 
   digitalWrite(cs, HIGH);
 }
-double MAX6675::readCelsius(void) {
+
+//double MAX6675::readCelsius(void)
+int16_t MAX6675::iReadCelsius(void) 
+{
 
   uint16_t v;
 
   digitalWrite(cs, LOW);
+#if USE_FAST_READ
+  _delay_us(FAST_READ_DELAY);
+#else // Normal clock
   _delay_ms(1);
+#endif //USE_FAST_CLK
 
   v = spiread();
   v <<= 8;
@@ -37,17 +46,13 @@ double MAX6675::readCelsius(void) {
 
   if (v & 0x4) {
     // uh oh, no thermocouple attached!
-    return NAN; 
+    return -1;
     //return -100;
   }
 
   v >>= 3;
 
-  return v*0.25;
-}
-
-double MAX6675::readFahrenheit(void) {
-  return readCelsius() * 9.0/5.0 + 32;
+  return v;
 }
 
 byte MAX6675::spiread(void) { 
@@ -57,14 +62,22 @@ byte MAX6675::spiread(void) {
   for (i=7; i>=0; i--)
   {
     digitalWrite(sclk, LOW);
+#if USE_FAST_READ
+	 _delay_us(FAST_READ_DELAY);
+#else // Normal clock
     _delay_ms(1);
+#endif //USE_FAST_CLK
     if (digitalRead(miso)) {
       //set the bit to 0 no matter what
       d |= (1 << i);
     }
 
     digitalWrite(sclk, HIGH);
-    _delay_ms(1);
+#if USE_FAST_READ
+	 _delay_us(FAST_READ_DELAY);
+#else // Normal clock
+	 _delay_ms(1);
+#endif //USE_FAST_CLK
   }
 
   return d;
